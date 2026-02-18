@@ -102,7 +102,8 @@ export default function App() {
         summary: res.impact_analysis
       });
     } catch (err: any) {
-      alert("Analysis failed. Please check your document format or connection.");
+      console.error("ANALYSIS_ERROR:", err);
+      alert(`Audit failed: ${err.message || 'Check connection/API key'}. Please check the browser console for details.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -123,8 +124,9 @@ export default function App() {
       const fullText = `${newDraft.summary}\n\n${newDraft.experience.map(e => `${e.role} at ${e.company}\n${e.bullets.join('\n')}`).join('\n')}`;
       const reScore = await analyzeResume({ text: fullText }, jobDescription);
       setAnalysis(prev => prev ? ({ ...prev, match_score: reScore.match_score }) : null);
-    } catch (err) {
-      alert("Rectification failed. Please try again.");
+    } catch (err: any) {
+      console.error("RECTIFY_ERROR:", err);
+      alert("Optimization gateway timed out. Please try again.");
     } finally {
       setIsRectifying(false);
     }
@@ -196,7 +198,7 @@ export default function App() {
             </div>
             <div className="space-y-3 pt-4">
               <button onClick={handleAnalyze} disabled={isAnalyzing || !resumeSource} className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center space-x-2 disabled:bg-slate-100">
-                {isAnalyzing ? "Analyzing..." : "Execute Audit"}
+                {isAnalyzing ? "Processing..." : "Execute Audit"}
               </button>
               {analysis && (
                 <button onClick={handleRectify} disabled={isRectifying} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all disabled:opacity-50">

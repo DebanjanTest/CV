@@ -103,8 +103,8 @@ const RECTIFY_SCHEMA = {
 };
 
 export async function analyzeResume(source: ResumeSource, jobDescription?: string): Promise<AnalysisResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const isGeneralized = !jobDescription || jobDescription.trim().length === 0;
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   
   const systemPrompt = `You are a Senior Full-Stack AI Engineer and CV Data Architect. Perform a lossless high-fidelity extraction and analysis. Capture 100% of roles, companies, and bullet points. OUTPUT: Strict JSON matching the schema.`;
 
@@ -118,21 +118,23 @@ export async function analyzeResume(source: ResumeSource, jobDescription?: strin
     parts.push({ text: `RAW CONTENT:\n${source.text}` });
   }
 
+  // Use Gemini 3 Flash for low-latency reliable responses on web platforms
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview',
     contents: { parts },
     config: {
       responseMimeType: "application/json",
-      responseSchema: ANALYSIS_SCHEMA,
-      thinkingConfig: { thinkingBudget: 4000 }
+      responseSchema: ANALYSIS_SCHEMA
     }
   });
 
+  if (!response.text) throw new Error("AI returned empty result");
   return JSON.parse(response.text.trim());
 }
 
 export async function rectifyResume(analysis: AnalysisResult, jobDescription?: string): Promise<RectifyResponse> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || "";
+  const ai = new GoogleGenAI({ apiKey });
   const keywordsList = [...analysis.missing_keywords, ...analysis.hard_skill_gaps].join(', ');
   
   const prompt = `You are an expert Resume Surgeon. Transform bullets to Action-Result format without omitting ANY existing data. Maintain 100% of roles and companies. Integrate: [${keywordsList}].
@@ -141,14 +143,14 @@ export async function rectifyResume(analysis: AnalysisResult, jobDescription?: s
   Experience: ${JSON.stringify(analysis.experience)}`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3-flash-preview',
     contents: prompt,
     config: {
       responseMimeType: "application/json",
-      responseSchema: RECTIFY_SCHEMA,
-      thinkingConfig: { thinkingBudget: 4000 }
+      responseSchema: RECTIFY_SCHEMA
     }
   });
 
+  if (!response.text) throw new Error("AI returned empty result");
   return JSON.parse(response.text.trim());
 }
