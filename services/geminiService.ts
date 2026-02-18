@@ -103,23 +103,10 @@ const RECTIFY_SCHEMA = {
 };
 
 export async function analyzeResume(source: ResumeSource, jobDescription?: string): Promise<AnalysisResult> {
-  if (!process.env.API_KEY) {
-    console.error("Gemini API Key is missing. Please set API_KEY in your environment variables.");
-    throw new Error("Missing API Key");
-  }
-
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isGeneralized = !jobDescription || jobDescription.trim().length === 0;
   
-  const systemPrompt = `You are a Senior Full-Stack AI Engineer and CV Data Architect. 
-  TASK: Perform a lossless high-fidelity extraction and analysis.
-  
-  ZERO-LOSS PROTOCOL:
-  1. Capture 100% of roles, companies, and bullet points.
-  2. Map personal data exactly. Use 'Present' for current roles.
-  3. Categorize skills into logical groups.
-  
-  OUTPUT: Strict JSON matching the schema. No text wrapping.`;
+  const systemPrompt = `You are a Senior Full-Stack AI Engineer and CV Data Architect. Perform a lossless high-fidelity extraction and analysis. Capture 100% of roles, companies, and bullet points. OUTPUT: Strict JSON matching the schema.`;
 
   const parts: any[] = [{ text: systemPrompt }];
 
@@ -131,58 +118,37 @@ export async function analyzeResume(source: ResumeSource, jobDescription?: strin
     parts.push({ text: `RAW CONTENT:\n${source.text}` });
   }
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: { parts },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: ANALYSIS_SCHEMA,
-        thinkingConfig: { thinkingBudget: 4000 }
-      }
-    });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: { parts },
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: ANALYSIS_SCHEMA,
+      thinkingConfig: { thinkingBudget: 4000 }
+    }
+  });
 
-    if (!response.text) throw new Error("Empty response from AI");
-    return JSON.parse(response.text.trim());
-  } catch (error: any) {
-    console.error("AI Analysis Error:", error);
-    throw error;
-  }
+  return JSON.parse(response.text.trim());
 }
 
 export async function rectifyResume(analysis: AnalysisResult, jobDescription?: string): Promise<RectifyResponse> {
-  if (!process.env.API_KEY) throw new Error("Missing API Key");
-  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const keywordsList = [...analysis.missing_keywords, ...analysis.hard_skill_gaps].join(', ');
   
-  const prompt = `You are an expert Resume Surgeon. 
-  TASK: Transform bullets to Action-Result format without omitting ANY existing data.
-  
-  STRICT RULES:
-  1. Maintain 100% of roles and companies.
-  2. Integrate: [${keywordsList}].
-  3. DO NOT cut the middle of text.
-  
+  const prompt = `You are an expert Resume Surgeon. Transform bullets to Action-Result format without omitting ANY existing data. Maintain 100% of roles and companies. Integrate: [${keywordsList}].
   INPUT:
   Summary: ${analysis.impact_analysis}
   Experience: ${JSON.stringify(analysis.experience)}`;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: RECTIFY_SCHEMA,
-        thinkingConfig: { thinkingBudget: 4000 }
-      }
-    });
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-pro-preview',
+    contents: prompt,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: RECTIFY_SCHEMA,
+      thinkingConfig: { thinkingBudget: 4000 }
+    }
+  });
 
-    if (!response.text) throw new Error("Empty response from AI");
-    return JSON.parse(response.text.trim());
-  } catch (error: any) {
-    console.error("AI Rectification Error:", error);
-    throw error;
-  }
+  return JSON.parse(response.text.trim());
 }

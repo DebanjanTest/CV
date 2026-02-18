@@ -43,7 +43,6 @@
             overflow: hidden;
         }
 
-        /* A4 Page Simulation - Ensuring Full Viewport Fill */
         .cv-a4-surface {
             width: 210mm;
             min-height: 297mm;
@@ -56,21 +55,12 @@
             grid-template-columns: repeat(10, 1fr);
         }
 
-        .highlight-entry {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
         @media print {
             body { background: white; overflow: visible; }
             .workspace-grid { display: block; height: auto; }
             .cv-a4-surface { box-shadow: none; margin: 0; width: 100%; }
         }
     </style>
-<script>
-    // Robust non-destructive shim for process.env
-    window.process = window.process || { env: {} };
-    if (!window.process.env) window.process.env = {};
-</script>
 <script type="importmap">
 {
   "imports": {
