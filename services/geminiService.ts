@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, RectifyResponse, ResumeSource } from "../types";
 
@@ -107,20 +106,20 @@ export async function analyzeResume(source: ResumeSource, jobDescription?: strin
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const isGeneralized = !jobDescription || jobDescription.trim().length === 0;
   
-  const systemPrompt = `You are the High-Fidelity CV Data Architect. 
-  TASK: Perform a FULL EXTRACTION of the provided CV. 
+  const systemPrompt = `You are a Senior Full-Stack AI Engineer and CV Data Architect. 
+  TASK: Perform a lossless high-fidelity extraction and analysis of the provided resume.
   
-  STRICT RULES:
-  1. DO NOT TRUNCATE professional experience. Capture EVERY bullet point provided in the source.
-  2. If a section like 'Education' or 'Skills' exists, it MUST be extracted 100%. 
-  3. Map personal data exactly. Fix logical errors (e.g. '2025' should be 'Present' if relevant to current employment).
+  ZERO-LOSS PROTOCOL:
+  1. DO NOT discard or summarize sections out of existence.
+  2. Extract 100% of the roles, companies, dates, and bullet points. 
+  3. Ensure 'Present' is used for current roles instead of future-dated years like '2025'.
+  4. Categorize skills into logical groups (e.g., Languages, Frameworks, Tools).
   
   ANALYSIS:
-  - Mode: ${isGeneralized ? 'GENERAL' : 'SPECIFIC ALIGNMENT'}.
-  - Be critical about the ATS score (0-100).
-  - List keywords missing relative to the JD.
+  - If a JD is provided, match strictly against it. 
+  - If not, audit against universal ATS formatting and impact best practices.
   
-  OUTPUT FORMAT: JSON ONLY. DO NOT ADD MARKDOWN WRAPPERS.`;
+  OUTPUT: Strict JSON matching the schema.`;
 
   const parts: any[] = [{ text: systemPrompt }];
 
@@ -129,7 +128,7 @@ export async function analyzeResume(source: ResumeSource, jobDescription?: strin
       inlineData: { data: source.file.data, mimeType: source.file.mimeType }
     });
   } else if (source.text) {
-    parts.push({ text: `CV CONTENT:\n${source.text}` });
+    parts.push({ text: `RAW CONTENT:\n${source.text}` });
   }
 
   const response = await ai.models.generateContent({
@@ -149,20 +148,18 @@ export async function rectifyResume(analysis: AnalysisResult, jobDescription?: s
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const keywordsList = [...analysis.missing_keywords, ...analysis.hard_skill_gaps].join(', ');
   
-  const prompt = `You are a Senior Resume Surgeon. 
-  TASK: Refactor professional bullets for maximum impact without losing information.
+  const prompt = `You are an expert Resume Surgeon. 
+  TASK: Optimize the summary and experience bullets while maintaining a strictly ZERO-LOSS approach.
   
-  ZERO-LOSS RECTIFICATION RULES:
-  1. Use the Action-Result format for ALL bullets.
-  2. Maintain 100% of the roles and companies from the input. 
-  3. DO NOT cut the middle of text. Each bullet must be a complete sentence.
-  4. Inject these keywords naturally: [${keywordsList}].
+  SURGERY RULES:
+  1. Transform every experience bullet into an 'Action-Result' masterpiece (e.g., 'Enhanced system throughput by 40% via implementation of X').
+  2. Maintain EVERY role and company. DO NOT omit history to save space.
+  3. Integrate keywords naturally: [${keywordsList}].
+  4. Ensure sentences are complete and professional. No "cut-out" text.
   
-  INPUT EXPERIENCE:
-  ${JSON.stringify(analysis.experience)}
-  
-  INPUT SUMMARY:
-  ${analysis.impact_analysis}`;
+  INPUT DATA:
+  Summary: ${analysis.impact_analysis}
+  Experience: ${JSON.stringify(analysis.experience)}`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
