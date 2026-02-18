@@ -1,11 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   AnalysisResult, 
   RectifyResponse, 
   ResumeSource, 
   ResumeDraft, 
-  EducationEntry, 
-  ExperienceEntry, 
   SkillCategory 
 } from './types';
 import { analyzeResume, rectifyResume } from './services/geminiService';
@@ -18,10 +16,10 @@ const SkillPill: React.FC<{ label: string }> = ({ label }) => (
   </span>
 );
 
-const SectionHeader: React.FC<{ title: string; color?: string }> = ({ title, color = "indigo" }) => (
-  <h3 className={`text-[12px] font-black text-slate-900 uppercase tracking-[0.2em] mb-4 flex items-center`}>
+const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
+  <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-[0.2em] mb-4 flex items-center">
     {title}
-    <span className={`flex-1 h-[0.5pt] bg-slate-200 ml-4`}></span>
+    <span className="flex-1 h-[0.5pt] bg-slate-200 ml-4"></span>
   </h3>
 );
 
@@ -49,7 +47,7 @@ const Header = ({ score, prevScore, mode }: { score?: number; prevScore?: number
             </div>
           )}
           <div className="flex items-center space-x-3 bg-slate-900 px-6 py-2.5 rounded-full shadow-lg shadow-indigo-500/20">
-            <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Neural Match:</span>
+            <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Match:</span>
             <span className={`text-base font-black ${score > 85 ? 'text-emerald-400' : score > 65 ? 'text-amber-400' : 'text-rose-400'}`}>{score}%</span>
           </div>
         </div>
@@ -68,7 +66,6 @@ export default function App() {
   const [draft, setDraft] = useState<ResumeDraft | null>(null);
   
   const cvPreviewRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLElement>(null);
 
   const resetAll = () => {
     setResumeSource(null);
@@ -105,7 +102,7 @@ export default function App() {
         summary: res.impact_analysis
       });
     } catch (err) {
-      alert("Analysis failed. Please try a different document format.");
+      alert("Analysis failed. Error accessing Neural Engine.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -127,7 +124,7 @@ export default function App() {
       const reScore = await analyzeResume({ text: fullText }, jobDescription);
       setAnalysis(prev => prev ? ({ ...prev, match_score: reScore.match_score }) : null);
     } catch (err) {
-      alert("Optimization failed. Neural engine timeout.");
+      alert("Rectification failed. Neural gateway timeout.");
     } finally {
       setIsRectifying(false);
     }
@@ -136,14 +133,18 @@ export default function App() {
   const handleExport = async () => {
     if (!cvPreviewRef.current || !draft) return;
     
-    // Scale capture for professional print quality
+    // Disable scrolling container during capture to ensure full height is processed
+    const originalHeight = cvPreviewRef.current.style.height;
+    cvPreviewRef.current.style.height = 'auto';
+
     const canvas = await html2canvas(cvPreviewRef.current, {
       scale: 3,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff',
-      scrollY: -window.scrollY
+      backgroundColor: '#ffffff'
     });
+    
+    cvPreviewRef.current.style.height = originalHeight;
     
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
@@ -156,7 +157,7 @@ export default function App() {
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${draft.personal_info.name.replace(/\s+/g, '_')}_ATS_Optimized.pdf`);
+    pdf.save(`${draft.personal_info.name.replace(/\s+/g, '_')}_Master_ATS.pdf`);
   };
 
   return (
@@ -164,19 +165,19 @@ export default function App() {
       <Header score={analysis?.match_score} prevScore={prevScore} mode={analysis?.mode} />
 
       <main className="workspace-grid bg-slate-100">
-        {/* CONTROL COLUMN */}
+        {/* LEFT: CONTROLS */}
         <section className="bg-white border-r border-slate-200 flex flex-col overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center">
               <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-2"></span>
-              Document Pipeline
+              Input Configuration
             </h2>
             {!resumeSource ? (
               <div className="space-y-4">
                 <input type="file" id="cv-upload-main" onChange={handleFileUpload} className="hidden" accept=".pdf,.txt" />
                 <label htmlFor="cv-upload-main" className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all flex flex-col items-center text-center group">
                   <svg className="w-8 h-8 text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                  <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Load Original CV</span>
+                  <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Select Document</span>
                 </label>
               </div>
             ) : (
@@ -186,7 +187,7 @@ export default function App() {
                     <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center shrink-0">
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9 2a2 2 0 00-2 2v8a2 2 0 002 2h6a2 2 0 002-2V6.414A2 2 0 0016.414 5L14 2.586A2 2 0 0012.586 2H9z"/></svg>
                     </div>
-                    <span className="text-[10px] font-black text-slate-700 truncate">{resumeSource.file?.name || "Text Loaded"}</span>
+                    <span className="text-[10px] font-black text-slate-700 truncate">{resumeSource.file?.name}</span>
                   </div>
                   <button onClick={resetAll} className="text-rose-500 hover:bg-rose-50 p-1 rounded transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
@@ -198,10 +199,10 @@ export default function App() {
 
           <div className="flex-1 p-6 flex flex-col space-y-6 overflow-y-auto custom-scrollbar">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Role Benchmarking</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Job Description</label>
               <textarea 
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none h-48 resize-none transition-all placeholder:text-slate-300 shadow-inner"
-                placeholder="Paste the target Job Description..."
+                placeholder="Paste the role requirements here..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
@@ -211,14 +212,9 @@ export default function App() {
               <button 
                 onClick={handleAnalyze} 
                 disabled={isAnalyzing || !resumeSource}
-                className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center space-x-2 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center space-x-2 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                {isAnalyzing ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4 text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    <span>Processing...</span>
-                  </>
-                ) : "Execute Analysis"}
+                {isAnalyzing ? "Building Matrix..." : "Analyze Source"}
               </button>
               
               {analysis && (
@@ -227,72 +223,68 @@ export default function App() {
                   disabled={isRectifying}
                   className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
-                  {isRectifying ? "Optimizing..." : "Neural Rectification"}
+                  {isRectifying ? "Performing Surgery..." : "Rectify Achievements"}
                 </button>
               )}
             </div>
 
             {analysis && (
               <div className="bg-slate-900 rounded-xl p-5 space-y-4 shadow-xl border border-slate-800 animate-in slide-in-from-bottom-4">
-                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Diagnostic Logs</h3>
-                <div className="space-y-3 max-h-40 overflow-y-auto custom-scrollbar pr-2">
-                  {analysis.formatting_issues.map((issue, i) => (
+                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Diagnostic Feedback</h3>
+                <div className="space-y-3">
+                  {analysis.formatting_issues.slice(0, 3).map((issue, i) => (
                     <div key={i} className="flex items-start space-x-3">
                       <div className="w-1 h-1 bg-indigo-400 rounded-full mt-1.5 shrink-0"></div>
                       <p className="text-[10px] font-bold text-slate-300 leading-tight">{issue}</p>
                     </div>
                   ))}
-                  {analysis.formatting_issues.length === 0 && <p className="text-[10px] font-bold text-emerald-400">Structure validated. No fatal errors detected.</p>}
+                  {analysis.formatting_issues.length === 0 && <p className="text-[10px] font-bold text-emerald-400">All systems green.</p>}
                 </div>
               </div>
             )}
           </div>
         </section>
 
-        {/* PREVIEW COLUMN */}
-        <section 
-          ref={scrollContainerRef}
-          className="flex-1 overflow-y-auto custom-scrollbar p-12 relative flex flex-col items-center scroll-smooth"
-        >
+        {/* RIGHT: PREVIEW AREA */}
+        <section className="flex-1 overflow-y-auto custom-scrollbar p-12 relative flex flex-col items-center bg-slate-100">
           {!draft ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center max-w-sm animate-pulse">
               <div className="w-24 h-24 border-4 border-slate-200 rounded-[3rem] flex items-center justify-center font-black text-4xl mb-8 italic text-slate-200">AB</div>
               <p className="text-[11px] font-black uppercase tracking-[0.3em] leading-relaxed">
-                Ready for Zero-Loss Reconstruction.
+                Enter Reconstruction Mode.
               </p>
             </div>
           ) : (
-            <div className="w-full flex flex-col items-center animate-in zoom-in-95 duration-700">
-               {/* Fixed Export Floating Bar */}
+            <div className="w-full flex flex-col items-center animate-in zoom-in-95 duration-700 pb-20">
+               {/* Export Floating Bar */}
                <div className="w-[210mm] flex justify-end mb-8 sticky top-0 z-50">
                   <button 
                     onClick={handleExport} 
-                    className="bg-emerald-500 text-white px-8 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-emerald-600 hover:scale-105 active:scale-95 transition-all flex items-center space-x-2"
+                    className="bg-emerald-500 text-white px-8 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-emerald-600 transition-all flex items-center space-x-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>Export High-Fidelity PDF</span>
+                    <span>Download Final Document</span>
                   </button>
                </div>
 
-              {/* A4 High-Fidelity surface */}
+              {/* High-Fidelity surface */}
               <div 
                 ref={cvPreviewRef}
                 className="cv-a4-surface grid grid-cols-10 text-slate-800"
               >
-                {/* 70% MAIN COLUMN */}
+                {/* MAIN COLUMN */}
                 <div className="col-span-7 p-16 pr-12 flex flex-col h-full border-r border-slate-50">
                   <header className="mb-12">
                     <h1 className="text-[48px] font-black text-slate-900 tracking-tighter mb-2 uppercase leading-none">{draft.personal_info.name}</h1>
                     <div className="flex items-center space-x-4">
                       <span className="text-indigo-600 font-black text-[14px] uppercase tracking-[0.4em] whitespace-nowrap">
-                        {draft.personal_info.role || "Professional Candidate"}
+                        {draft.personal_info.role || "Professional"}
                       </span>
                       <div className="h-[1pt] flex-1 bg-slate-100"></div>
                     </div>
                   </header>
 
                   <div className="space-y-16">
-                    {/* Summary Section */}
                     <section className="highlight-entry">
                       <SectionHeader title="Professional Profile" />
                       <p className="text-[11px] text-slate-600 leading-[1.8] font-medium text-justify">
@@ -300,15 +292,14 @@ export default function App() {
                       </p>
                     </section>
 
-                    {/* Experience Section */}
                     <section>
-                      <SectionHeader title="Professional Trajectory" />
+                      <SectionHeader title="Experience" />
                       <div className="space-y-12">
                         {draft.experience.map((exp, i) => (
                           <div key={i} className="group">
                             <div className="flex justify-between items-baseline mb-3">
                               <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-tight leading-none">{exp.role}</h4>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-md border border-slate-100">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-md border border-slate-100 whitespace-nowrap">
                                 {exp.date}
                               </span>
                             </div>
@@ -316,7 +307,7 @@ export default function App() {
                             <ul className="space-y-4">
                               {exp.bullets.map((bullet, bi) => (
                                 <li key={bi} className="text-[10px] text-slate-600 leading-relaxed flex items-start">
-                                  <span className="w-1.5 h-1.5 bg-indigo-200 rounded-full mt-1.5 mr-4 shrink-0 transition-colors group-hover:bg-indigo-400"></span>
+                                  <span className="w-1.5 h-1.5 bg-indigo-200 rounded-full mt-1.5 mr-4 shrink-0"></span>
                                   <span className="flex-1">{bullet}</span>
                                 </li>
                               ))}
@@ -326,9 +317,8 @@ export default function App() {
                       </div>
                     </section>
 
-                    {/* Education Section */}
                     <section>
-                      <SectionHeader title="Academic Foundation" />
+                      <SectionHeader title="Education" />
                       <div className="space-y-8">
                         {draft.education.map((edu, i) => (
                           <div key={i} className="flex justify-between items-start bg-slate-50/40 p-5 rounded-2xl border border-slate-50">
@@ -336,7 +326,7 @@ export default function App() {
                               <p className="text-[12px] font-black text-slate-900 uppercase leading-none mb-2">{edu.institution}</p>
                               <p className="text-[11px] text-slate-500 font-bold italic">{edu.degree}</p>
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{edu.date}</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ml-4">{edu.date}</span>
                           </div>
                         ))}
                       </div>
@@ -344,42 +334,34 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* 30% SIDEBAR COLUMN */}
+                {/* SIDEBAR COLUMN */}
                 <div className="col-span-3 bg-slate-50/50 p-12 flex flex-col h-full border-l border-slate-100">
                   <div className="space-y-16">
-                    {/* Contact Detail */}
                     <section>
                       <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-6 pb-2 border-b-2 border-slate-200">Connect</h3>
-                      <div className="space-y-6 text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                      <div className="space-y-6 text-[11px] font-bold text-slate-600 uppercase tracking-tight overflow-hidden">
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Personal Email</span>
-                          <span className="truncate hover:text-indigo-600 transition-colors cursor-default">{draft.personal_info.email}</span>
+                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Email</span>
+                          <span className="truncate">{draft.personal_info.email}</span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Contact Line</span>
+                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Phone</span>
                           <span>{draft.personal_info.phone}</span>
                         </div>
-                        {draft.personal_info.location && (
-                          <div className="flex flex-col">
-                            <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Geographic Base</span>
-                            <span>{draft.personal_info.location}</span>
-                          </div>
-                        )}
                         {draft.personal_info.linkedin && (
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Professional Network</span>
+                            <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">LinkedIn</span>
                             <span className="truncate">{draft.personal_info.linkedin}</span>
                           </div>
                         )}
                       </div>
                     </section>
 
-                    {/* Skills Breakdown */}
                     <section>
-                      <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-200">Skillset</h3>
+                      <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-200">Skills</h3>
                       <div className="space-y-10">
                         {draft.skills.map((cat, i) => (
-                          <div key={i} className="animate-in fade-in" style={{ animationDelay: `${i * 150}ms` }}>
+                          <div key={i}>
                             <p className="text-[9px] font-black text-slate-400 uppercase mb-4 tracking-widest">{cat.category}</p>
                             <div className="flex flex-wrap gap-2">
                               {cat.items.map((it, ii) => <SkillPill key={ii} label={it} />)}
@@ -389,10 +371,9 @@ export default function App() {
                       </div>
                     </section>
 
-                    {/* Certifications */}
                     {draft.certifications.length > 0 && (
                       <section>
-                        <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-6 pb-2 border-b-2 border-slate-200">Verifications</h3>
+                        <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-6 pb-2 border-b-2 border-slate-200">Verify</h3>
                         <div className="space-y-4">
                           {draft.certifications.map((cert, i) => (
                             <p key={i} className="text-[10px] text-slate-600 font-bold leading-tight flex items-start">
@@ -407,7 +388,7 @@ export default function App() {
 
                   <div className="mt-auto pt-20 flex flex-col items-center">
                     <div className="w-16 h-1 bg-indigo-200 rounded-full mb-6"></div>
-                    <p className="text-[8px] text-slate-400 font-black uppercase tracking-[0.5em] text-center">Neural Output Certified</p>
+                    <p className="text-[8px] text-slate-400 font-black uppercase tracking-[0.5em] text-center">Neural Output</p>
                   </div>
                 </div>
               </div>
@@ -419,16 +400,12 @@ export default function App() {
       <footer className="app-footer bg-slate-900 border-t border-slate-800 px-8 flex items-center justify-between text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] z-[100]">
         <div className="flex items-center space-x-8">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/20"></span>
-            <span>Live Engine: Reconstructor v4.0</span>
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+            <span>Reconstructor v4.1 Active</span>
           </div>
-          <span>Content Integrity: Standard Zero-Loss</span>
+          <span>Status: 100% Lossless</span>
         </div>
-        <div className="flex space-x-6 items-center">
-          <span className="text-indigo-400/80 font-mono tracking-normal normal-case">process.integrity_confirmed</span>
-          <span className="opacity-20">|</span>
-          <span>&copy; 2025 ATS Bridge Global</span>
-        </div>
+        <div>&copy; 2025 ATS Bridge High-Fidelity Suite</div>
       </footer>
     </div>
   );
