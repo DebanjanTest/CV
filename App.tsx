@@ -32,7 +32,7 @@ const Header = ({ score, prevScore, mode }: { score?: number; prevScore?: number
       </div>
       {mode && (
         <div className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-full border border-indigo-100 uppercase tracking-widest animate-in fade-in zoom-in-95">
-          {mode === 'specific' ? 'Targeted' : 'General'} Reconstructor
+          {mode === 'specific' ? 'Targeted' : 'General'} Audit
         </div>
       )}
     </div>
@@ -42,12 +42,12 @@ const Header = ({ score, prevScore, mode }: { score?: number; prevScore?: number
         <div className="flex items-center space-x-5 animate-in slide-in-from-right-4 duration-500">
           {prevScore !== undefined && prevScore !== score && (
             <div className="flex flex-col items-end leading-none">
-              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Baseline</span>
+              <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Initial</span>
               <span className="text-xs font-bold text-slate-400 line-through">{prevScore}%</span>
             </div>
           )}
-          <div className="flex items-center space-x-3 bg-slate-900 px-6 py-2.5 rounded-full shadow-lg shadow-indigo-500/20">
-            <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Match:</span>
+          <div className="flex items-center space-x-3 bg-slate-900 px-6 py-2.5 rounded-full shadow-lg shadow-indigo-500/20 border border-slate-800">
+            <span className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">Match Score:</span>
             <span className={`text-base font-black ${score > 85 ? 'text-emerald-400' : score > 65 ? 'text-amber-400' : 'text-rose-400'}`}>{score}%</span>
           </div>
         </div>
@@ -101,8 +101,9 @@ export default function App() {
         certifications: res.certifications,
         summary: res.impact_analysis
       });
-    } catch (err) {
-      alert("Analysis failed. Error accessing Neural Engine.");
+    } catch (err: any) {
+      const msg = err.message === "Missing API Key" ? "API Key not found in Vercel settings." : "Analysis failed. Check your connection or API limit.";
+      alert(msg);
     } finally {
       setIsAnalyzing(false);
     }
@@ -124,7 +125,7 @@ export default function App() {
       const reScore = await analyzeResume({ text: fullText }, jobDescription);
       setAnalysis(prev => prev ? ({ ...prev, match_score: reScore.match_score }) : null);
     } catch (err) {
-      alert("Rectification failed. Neural gateway timeout.");
+      alert("Rectification failed. Please try again.");
     } finally {
       setIsRectifying(false);
     }
@@ -133,7 +134,7 @@ export default function App() {
   const handleExport = async () => {
     if (!cvPreviewRef.current || !draft) return;
     
-    // Disable scrolling container during capture to ensure full height is processed
+    // Temporarily disable fixed heights for capture
     const originalHeight = cvPreviewRef.current.style.height;
     cvPreviewRef.current.style.height = 'auto';
 
@@ -141,7 +142,8 @@ export default function App() {
       scale: 3,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      windowHeight: cvPreviewRef.current.scrollHeight
     });
     
     cvPreviewRef.current.style.height = originalHeight;
@@ -157,7 +159,7 @@ export default function App() {
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
     
     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`${draft.personal_info.name.replace(/\s+/g, '_')}_Master_ATS.pdf`);
+    pdf.save(`${draft.personal_info.name.replace(/\s+/g, '_')}_Final_CV.pdf`);
   };
 
   return (
@@ -165,19 +167,19 @@ export default function App() {
       <Header score={analysis?.match_score} prevScore={prevScore} mode={analysis?.mode} />
 
       <main className="workspace-grid bg-slate-100">
-        {/* LEFT: CONTROLS */}
+        {/* LEFT COLUMN: FIXED */}
         <section className="bg-white border-r border-slate-200 flex flex-col overflow-hidden shadow-sm">
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center">
               <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full mr-2"></span>
-              Input Configuration
+              Document Controller
             </h2>
             {!resumeSource ? (
               <div className="space-y-4">
                 <input type="file" id="cv-upload-main" onChange={handleFileUpload} className="hidden" accept=".pdf,.txt" />
                 <label htmlFor="cv-upload-main" className="w-full border-2 border-dashed border-slate-200 rounded-2xl p-8 cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition-all flex flex-col items-center text-center group">
                   <svg className="w-8 h-8 text-slate-300 group-hover:text-indigo-400 mb-2 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
-                  <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Select Document</span>
+                  <span className="text-xs font-bold text-slate-500 group-hover:text-indigo-600">Upload Original Dossier</span>
                 </label>
               </div>
             ) : (
@@ -199,10 +201,10 @@ export default function App() {
 
           <div className="flex-1 p-6 flex flex-col space-y-6 overflow-y-auto custom-scrollbar">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Job Description</label>
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Job Criteria</label>
               <textarea 
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none h-48 resize-none transition-all placeholder:text-slate-300 shadow-inner"
-                placeholder="Paste the role requirements here..."
+                placeholder="Paste the target requirements to benchmark against..."
                 value={jobDescription}
                 onChange={(e) => setJobDescription(e.target.value)}
               />
@@ -214,7 +216,7 @@ export default function App() {
                 disabled={isAnalyzing || !resumeSource}
                 className="w-full py-4 bg-slate-900 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center space-x-2 disabled:bg-slate-100 disabled:text-slate-400"
               >
-                {isAnalyzing ? "Building Matrix..." : "Analyze Source"}
+                {isAnalyzing ? "Processing Neural Map..." : "Execute Audit"}
               </button>
               
               {analysis && (
@@ -223,16 +225,16 @@ export default function App() {
                   disabled={isRectifying}
                   className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
-                  {isRectifying ? "Performing Surgery..." : "Rectify Achievements"}
+                  {isRectifying ? "Optimizing Experience..." : "Apply Neural Rectification"}
                 </button>
               )}
             </div>
 
             {analysis && (
               <div className="bg-slate-900 rounded-xl p-5 space-y-4 shadow-xl border border-slate-800 animate-in slide-in-from-bottom-4">
-                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Diagnostic Feedback</h3>
-                <div className="space-y-3">
-                  {analysis.formatting_issues.slice(0, 3).map((issue, i) => (
+                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Diagnostic Logs</h3>
+                <div className="space-y-3 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                  {analysis.formatting_issues.map((issue, i) => (
                     <div key={i} className="flex items-start space-x-3">
                       <div className="w-1 h-1 bg-indigo-400 rounded-full mt-1.5 shrink-0"></div>
                       <p className="text-[10px] font-bold text-slate-300 leading-tight">{issue}</p>
@@ -245,13 +247,13 @@ export default function App() {
           </div>
         </section>
 
-        {/* RIGHT: PREVIEW AREA */}
+        {/* RIGHT COLUMN: PREVIEW SCROLLABLE */}
         <section className="flex-1 overflow-y-auto custom-scrollbar p-12 relative flex flex-col items-center bg-slate-100">
           {!draft ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60 text-center max-w-sm animate-pulse">
               <div className="w-24 h-24 border-4 border-slate-200 rounded-[3rem] flex items-center justify-center font-black text-4xl mb-8 italic text-slate-200">AB</div>
               <p className="text-[11px] font-black uppercase tracking-[0.3em] leading-relaxed">
-                Enter Reconstruction Mode.
+                Awaiting Reconstruction Protocol.
               </p>
             </div>
           ) : (
@@ -263,22 +265,22 @@ export default function App() {
                     className="bg-emerald-500 text-white px-8 py-3 rounded-full font-black text-[11px] uppercase tracking-widest shadow-2xl hover:bg-emerald-600 transition-all flex items-center space-x-2"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                    <span>Download Final Document</span>
+                    <span>Download Final PDF</span>
                   </button>
                </div>
 
-              {/* High-Fidelity surface */}
+              {/* High-Fidelity A4 Container */}
               <div 
                 ref={cvPreviewRef}
-                className="cv-a4-surface grid grid-cols-10 text-slate-800"
+                className="cv-a4-surface text-slate-800"
               >
-                {/* MAIN COLUMN */}
+                {/* 70% MAIN COLUMN */}
                 <div className="col-span-7 p-16 pr-12 flex flex-col h-full border-r border-slate-50">
                   <header className="mb-12">
                     <h1 className="text-[48px] font-black text-slate-900 tracking-tighter mb-2 uppercase leading-none">{draft.personal_info.name}</h1>
                     <div className="flex items-center space-x-4">
                       <span className="text-indigo-600 font-black text-[14px] uppercase tracking-[0.4em] whitespace-nowrap">
-                        {draft.personal_info.role || "Professional"}
+                        {draft.personal_info.role || "Professional Candidate"}
                       </span>
                       <div className="h-[1pt] flex-1 bg-slate-100"></div>
                     </div>
@@ -293,13 +295,13 @@ export default function App() {
                     </section>
 
                     <section>
-                      <SectionHeader title="Experience" />
+                      <SectionHeader title="Trajectory" />
                       <div className="space-y-12">
                         {draft.experience.map((exp, i) => (
                           <div key={i} className="group">
                             <div className="flex justify-between items-baseline mb-3">
                               <h4 className="text-[14px] font-black text-slate-900 uppercase tracking-tight leading-none">{exp.role}</h4>
-                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-md border border-slate-100 whitespace-nowrap">
+                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-md border border-slate-100 whitespace-nowrap ml-4">
                                 {exp.date}
                               </span>
                             </div>
@@ -307,7 +309,7 @@ export default function App() {
                             <ul className="space-y-4">
                               {exp.bullets.map((bullet, bi) => (
                                 <li key={bi} className="text-[10px] text-slate-600 leading-relaxed flex items-start">
-                                  <span className="w-1.5 h-1.5 bg-indigo-200 rounded-full mt-1.5 mr-4 shrink-0"></span>
+                                  <span className="w-1.5 h-1.5 bg-indigo-200 rounded-full mt-1.5 mr-4 shrink-0 group-hover:bg-indigo-400 transition-colors"></span>
                                   <span className="flex-1">{bullet}</span>
                                 </li>
                               ))}
@@ -318,7 +320,7 @@ export default function App() {
                     </section>
 
                     <section>
-                      <SectionHeader title="Education" />
+                      <SectionHeader title="Foundation" />
                       <div className="space-y-8">
                         {draft.education.map((edu, i) => (
                           <div key={i} className="flex justify-between items-start bg-slate-50/40 p-5 rounded-2xl border border-slate-50">
@@ -326,7 +328,7 @@ export default function App() {
                               <p className="text-[12px] font-black text-slate-900 uppercase leading-none mb-2">{edu.institution}</p>
                               <p className="text-[11px] text-slate-500 font-bold italic">{edu.degree}</p>
                             </div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ml-4">{edu.date}</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap ml-6">{edu.date}</span>
                           </div>
                         ))}
                       </div>
@@ -334,18 +336,18 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* SIDEBAR COLUMN */}
+                {/* 30% SIDEBAR COLUMN */}
                 <div className="col-span-3 bg-slate-50/50 p-12 flex flex-col h-full border-l border-slate-100">
                   <div className="space-y-16">
                     <section>
                       <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-6 pb-2 border-b-2 border-slate-200">Connect</h3>
                       <div className="space-y-6 text-[11px] font-bold text-slate-600 uppercase tracking-tight overflow-hidden">
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Email</span>
-                          <span className="truncate">{draft.personal_info.email}</span>
+                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Personal Email</span>
+                          <span className="truncate hover:text-indigo-600 transition-colors">{draft.personal_info.email}</span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Phone</span>
+                          <span className="text-[8px] text-indigo-400 font-black mb-1.5 tracking-[0.2em]">Contact Line</span>
                           <span>{draft.personal_info.phone}</span>
                         </div>
                         {draft.personal_info.linkedin && (
@@ -358,7 +360,7 @@ export default function App() {
                     </section>
 
                     <section>
-                      <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-200">Skills</h3>
+                      <h3 className="text-[12px] font-black text-slate-900 uppercase tracking-widest mb-8 pb-2 border-b-2 border-slate-200">Skillset</h3>
                       <div className="space-y-10">
                         {draft.skills.map((cat, i) => (
                           <div key={i}>
@@ -400,12 +402,13 @@ export default function App() {
       <footer className="app-footer bg-slate-900 border-t border-slate-800 px-8 flex items-center justify-between text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] z-[100]">
         <div className="flex items-center space-x-8">
           <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-            <span>Reconstructor v4.1 Active</span>
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-lg shadow-emerald-500/20"></span>
+            <span>Neural Gateway: RECON-4.2-STABLE</span>
           </div>
-          <span>Status: 100% Lossless</span>
+          <span className="opacity-40">|</span>
+          <span>Status: 100% Zero-Loss Extraction</span>
         </div>
-        <div>&copy; 2025 ATS Bridge High-Fidelity Suite</div>
+        <div>&copy; 2025 ATS Bridge Global Suite</div>
       </footer>
     </div>
   );

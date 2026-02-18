@@ -34,25 +34,26 @@
             background: #94a3b8;
         }
         
-        /* Fixed workspace heights */
         .app-header { height: 64px; }
         .app-footer { height: 40px; }
         .workspace-grid {
             display: grid;
-            grid-template-columns: 320px 1fr;
-            height: calc(100vh - 104px); /* 64px + 40px */
+            grid-template-columns: 340px 1fr;
+            height: calc(100vh - 104px);
             overflow: hidden;
         }
 
-        /* A4 Page Simulation - High Precision */
+        /* A4 Page Simulation - Ensuring Full Viewport Fill */
         .cv-a4-surface {
             width: 210mm;
             min-height: 297mm;
             background: white;
-            box-shadow: 0 10px 50px rgba(0,0,0,0.15);
+            box-shadow: 0 15px 60px rgba(0,0,0,0.12);
             margin: 40px auto;
             position: relative;
             transform-origin: top center;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
         }
 
         .highlight-entry {
@@ -66,8 +67,9 @@
         }
     </style>
 <script>
-    // Shim for process.env to prevent ReferenceErrors in environments without a bundler
-    window.process = { env: { API_KEY: "" } };
+    // Robust non-destructive shim for process.env
+    window.process = window.process || { env: {} };
+    if (!window.process.env) window.process.env = {};
 </script>
 <script type="importmap">
 {
@@ -85,7 +87,6 @@
 </head>
 <body>
     <div id="root"></div>
-    <!-- Entry point for the application -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
